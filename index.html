@@ -134,6 +134,111 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-内存对齐" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2023/10/08/%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/">内存对齐</a>
+    </h1>
+  
+
+        
+        <a href="/2023/10/08/%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/" class="archive-article-date">
+  	<time datetime="2023-10-08T14:26:44.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2023-10-08</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/30007037">C&#x2F;C++内存对齐详解 - 忆臻的文章</a></p>
+</blockquote>
+<h5 id="什么是内存对齐"><a href="#什么是内存对齐" class="headerlink" title="什么是内存对齐"></a>什么是内存对齐</h5><p>用一个例子带出这个问题，看下面的小程序，理论上，32位系统下，int占4byte，char占一个byte，那么将它们放到一个结构体中应该占4+1&#x3D;5byte；但是实际上，通过运行程序得到的结果是8 byte，这就是内存对齐所导致的。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//32位系统</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span>;</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">    <span class="type">int</span> x;</span><br><span class="line">    <span class="type">char</span> y;</span><br><span class="line"> &#125; s;</span><br><span class="line"> <span class="type">int</span> <span class="title function_">main</span><span class="params">()</span>&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d&quot;</span>, <span class="keyword">sizeof</span>(s)); <span class="comment">// 输出 8</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<p>现代计算机中内存空间都是按照字节划分的，从理论上讲似乎对任何类型的变量的访问可以从任何地址开始，但是实际的计算机系统对基本类型数据在内存中存放的位置有限制，它们会要求这些数据的首地址的值是某个数k（通常它为4或8）的倍数，这就是所谓的内存对齐。</p>
+<h4 id="为什么要进行内存对齐"><a href="#为什么要进行内存对齐" class="headerlink" title="为什么要进行内存对齐"></a>为什么要进行内存对齐</h4><p>尽管内存是以字节为单位，但是大部分处理器并不是按字节块来存取内存的.它一般会以双字节,四字节,8字节,16字节甚至32字节为单位来存取内存，我们将上述这些存取单位称为内存存取粒度.<br>现在考虑4字节存取粒度的处理器取int类型变量（32位系统），该处理器只能从地址为4的倍数的内存开始读取数据。假如没有内存对齐机制，数据可以任意存放，现在一个int变量存放在从地址1开始的联系四个字节地址中，该处理器去取数据时，要先从0地址开始读取第一个4字节块,剔除不想要的字节（0地址）,然后从地址4开始读取下一个4字节块,同样剔除不要的数据（5，6，7地址）,最后留下的两块数据合并放入寄存器.这需要做很多工作.</p>
+<p><img src="/images/mem-align-3f.jpg" alt="15e5e268a52896dab8fea13f7ab9fcbf"></p>
+<p>现在有了内存对齐的，int类型数据只能存放在按照对齐规则的内存中，比如说0地址开始的内存。那么现在该处理器在取数据时一次性就能将数据读出来了，而且不需要做额外的操作，提高了效率。</p>
+<p><img src="/images/mem-align-36.jpg" alt="1f9655416f66fe0112e7ca307147fe50"></p>
+<h4 id="内存对齐规则"><a href="#内存对齐规则" class="headerlink" title="内存对齐规则"></a>内存对齐规则</h4><p>每个特定平台上的编译器都有自己的默认“对齐系数”（也叫对齐模数）。gcc中默认<code>#pragma pack(4)</code>，可以通过预编译命令<code>#pragma pack(n)，n = 1,2,4,8,16</code>来改变这一系数。</p>
+<p>有效对其值：是给定值<code>#pragma pack(n)</code>和<em>结构体中最长数据类型长度</em>中较小的那个。有效对齐值也叫对齐单位。</p>
+<p>了解了上面的概念后，我们现在可以来看看内存对齐需要遵循的规则：</p>
+<ol>
+<li>结构体第一个成员的偏移量（offset）为0，后面每个成员相对于结构体首地址的 offset 都是该成员大小与有效对齐值中较小那个的整数倍，如有需要编译器会在成员之间加上填充字节；</li>
+<li>结构体的总大小为 有效对齐值 的整数倍，如有需要编译器会在最末一个成员之后加上填充字节；</li>
+</ol>
+<p>下面给出几个例子以便于理解：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//32位系统</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">int</span> i;</span><br><span class="line">    <span class="type">char</span> c1;</span><br><span class="line">    <span class="type">char</span> c2;</span><br><span class="line">&#125;x1;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">    <span class="type">char</span> c1;</span><br><span class="line">    <span class="type">int</span> i;</span><br><span class="line">    <span class="type">char</span> c2;</span><br><span class="line">&#125;x2;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">    <span class="type">char</span> c1;</span><br><span class="line">    <span class="type">char</span> c2;</span><br><span class="line">    <span class="type">int</span> i;</span><br><span class="line">&#125;x3;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%dn&quot;</span>,<span class="keyword">sizeof</span>(x1)); <span class="comment">// 输出8</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%dn&quot;</span>,<span class="keyword">sizeof</span>(x2)); <span class="comment">// 输出12</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%dn&quot;</span>,<span class="keyword">sizeof</span>(x3)); <span class="comment">// 输出8</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上测试都是在Linux环境下进行的，linux下32位系统默认<code>#pragma pack(4)</code>，且结构体中最长的数据类型<code>int</code>为4个字节，所以有效对齐单位为4字节。下面根据上面所说的规则以<code>struct s2</code>来分析其内存布局：</p>
+<ul>
+<li>规则1：<code>sizeof(c1) = 1 &lt;=4(有效对齐位)</code>，按照1字节对齐，占用第0单元；</li>
+<li>规则1:  <code>sizeof(i) = 4 &lt;= 4(有效对齐位)</code>，相对于结构体首地址的偏移要为4的倍数，占用第4，5，6，7单元；</li>
+<li>规则1:  <code>sizeof(c2) = 1 &lt;= 4(有效对齐位)</code>，相对于结构体首地址的偏移要为1的倍数，占用第8单元；</li>
+<li>规则2：对结构体整体进行对齐：由规则1得到s2占9个字节，此处再按照规则2进行整体的4字节对齐，所以整个结构体占用12个字节。</li>
+</ul>
+<p>根据上面的分析，不难得出上面例子三个结构体的内存布局如下：</p>
+<p><img src="/images/mem-align-86.jpg" alt="75065061f4740904b7e1fb3b4c40e502"></p>
+<p>通过预编译命令<code>#pragma pack(n), n= 1,2,4,8,16</code>来改变对齐系数。例如，对于上个例子的三个结构体，如果前面加上<code>#pragma pack(1)</code>，那么此时有效对齐值为1字节，此时根据对齐规则，不难看出成员是连续存放的，三个结构体的大小都是6字节。</p>
+<p><img src="/images/mem-align-67.jpg" alt="d21d6386255ae3ce51cc1733655e111b"></p>
+<p>如果前面加上<code>#pragma pack(2)</code>，有效对齐值为2字节，此时根据对齐规则，三个结构体的大小应为6,8,6。内存分布图如下：</p>
+<p><img src="/images/mem-align-1c.jpg" alt="e43c09b8c3095857ee0a27c2b5a94a2b"></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">转载 C++</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2023/10/08/%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-Muduo学习笔记之Poller" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -543,6 +648,10 @@ MathJax.Hub.Queue(function() {
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">C++ 网络编程 Muduo</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">转载 C++</a>
               </li>
             
             <div class="clearfix"></div>
