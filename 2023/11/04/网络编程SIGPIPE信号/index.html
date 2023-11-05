@@ -6,16 +6,19 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
   <link rel="dns-prefetch" href="http://example.com">
-  <title>Archives: 2023 | Zhangxh&#39;s Blog</title>
+  <title>网络编程SIGPIPE信号 | Zhangxh&#39;s Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="Wanna Go To CMU">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Zhangxh&#39;s Blog">
-<meta property="og:url" content="http://example.com/archives/2023/index.html">
+  <meta name="description" content="在学习Muduo网络库过程中，net&#x2F;EventLoop.cc中看到了对SIGPIPE信号的处理，因此在此处记录下。 在TCP编程中，SIGPIPE是一种信号，它通常发生在以下情况：  When a process writes to a socket that has received an RST, the SIGPIPE signal is sent to the process. The">
+<meta property="og:type" content="article">
+<meta property="og:title" content="网络编程SIGPIPE信号">
+<meta property="og:url" content="http://example.com/2023/11/04/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8BSIGPIPE%E4%BF%A1%E5%8F%B7/index.html">
 <meta property="og:site_name" content="Zhangxh&#39;s Blog">
-<meta property="og:description" content="Wanna Go To CMU">
+<meta property="og:description" content="在学习Muduo网络库过程中，net&#x2F;EventLoop.cc中看到了对SIGPIPE信号的处理，因此在此处记录下。 在TCP编程中，SIGPIPE是一种信号，它通常发生在以下情况：  When a process writes to a socket that has received an RST, the SIGPIPE signal is sent to the process. The">
 <meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-04T08:01:41.000Z">
+<meta property="article:modified_time" content="2023-11-05T08:03:17.753Z">
 <meta property="article:author" content="Zhangxh-95">
+<meta property="article:tag" content="C++ 网络编程">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternative" href="/atom.xml" title="Zhangxh&#39;s Blog" type="application/atom+xml">
@@ -132,36 +135,56 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            
-  
-  
+            <article id="post-网络编程SIGPIPE信号" class="article article-type-post " itemscope itemprop="blogPost">
+  <div class="article-inner">
     
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2023" class="archive-year">2023</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2023/11/04/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8BSIGPIPE%E4%BF%A1%E5%8F%B7/" class="archive-article-date">
-  	<time datetime="2023-11-04T08:01:41.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2023-11-04</time>
-</a>
-        </div>
-    	 
+      <header class="article-header">
+        
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2023/11/04/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8BSIGPIPE%E4%BF%A1%E5%8F%B7/">网络编程SIGPIPE信号</a>
+    <h1 class="article-title" itemprop="name">
+      网络编程SIGPIPE信号
     </h1>
   
 
-        <div class="article-info info-on-right">
-          
+        
+        <a href="/2023/11/04/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8BSIGPIPE%E4%BF%A1%E5%8F%B7/" class="archive-article-date">
+  	<time datetime="2023-11-04T08:01:41.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2023-11-04</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在学习Muduo网络库过程中，<code>net/EventLoop.cc</code>中看到了对<code>SIGPIPE</code>信号的处理，因此在此处记录下。</p>
+<p>在TCP编程中，<code>SIGPIPE</code>是一种信号，它通常发生在以下情况：</p>
+<blockquote>
+<p>When a process writes to a socket that has received an RST, the SIGPIPE signal is sent to the process. The default action of this signal is to terminate the process, so the process must catch the signal to avoid being involuntarily terminated. –from section 5.13 in “Unix Network Programming” by Richard Stevens. </p>
+</blockquote>
+<p>也就是，socket在接收到了 <code>RST</code> packet 后，程序仍然向这个 <code>socket</code> 写入数据，那么就会产生SIGPIPE信号。</p>
+<p>这种情况在网络应用中经常发生，譬如说，当 client 连接到 server 之后，这时候 server 准备向 client 发送多条消息，但在发送消息之前，client 进程意外奔溃了，那么接下来 server 在发送多条消息的过程中，就会出现<code>SIGPIPE</code>信号。</p>
+<p>处理SIGPIPE的常见方法是忽略它，以防止服务器进程意外终止。你可以在你的程序中使用以下代码来忽略<code>SIGPIPE</code>信号, 然后根据错误<code>errno</code>和自身需要针对性处理，增强程序的稳定性：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;signal.h&gt;</span></span></span><br><span class="line">::signal(SIGPIPE, SIG_IGN);</span><br></pre></td></tr></table></figure>
+
+<p>举个<a target="_blank" rel="noopener" href="http://senlinzhan.github.io/2017/03/02/sigpipe/">示例</a>，复现<code>SIGPIPE</code>信号产生：<br><strong>Server</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;arpa/inet.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;errno.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAXLINE 1024</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">handle_client</span><span class="params">(<span class="type">int</span> fd)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 假设此时 client 奔溃, 那么 server 将接收到 client 发送的 FIN</span></span><br><span class="line">    sleep(<span class="number">5</span>);</span><br><span class="line">    <span class="comment">// 写入第一条消息</span></span><br><span class="line">    <span class="type">char</span> msg1[MAXLINE] = &#123;<span class="string">&quot;first message&quot;</span>&#125;; </span><br><span class="line">    <span class="type">ssize_t</span> n = write(fd, msg1, <span class="built_in">strlen</span>(msg1));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;write %ld bytes\n&quot;</span>, n);</span><br><span class="line">    <span class="comment">// 此时第一条消息发送成功，server 接收到 client 发送的 RST</span></span><br><span class="line">    sleep(<span class="number">1</span>); </span><br><span class="line">    <span class="comment">// 写入第二条消息，出现 SIGPIPE 信号，导致 server 被杀死</span></span><br><span class="line">    <span class="type">char</span> msg2[MAXLINE] = &#123;<span class="string">&quot;second message&quot;</span>&#125;;</span><br><span class="line">    n = write(fd, msg2, <span class="built_in">strlen</span>(msg2));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%ld, %s\n&quot;</span>, n, strerror(errno));</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">short</span> port = <span class="number">8888</span>;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">server_addr</span>;</span></span><br><span class="line">    bzero(&amp;server_addr, <span class="keyword">sizeof</span>(server_addr));</span><br><span class="line">    server_addr.sin_family = AF_INET;</span><br><span class="line">    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);</span><br><span class="line">    server_addr.sin_port = htons(port);</span><br><span class="line">    <span class="type">int</span> listenfd = socket(AF_INET , SOCK_STREAM , <span class="number">0</span>);</span><br><span class="line">    bind(listenfd, (<span class="keyword">struct</span> sockaddr *)&amp;server_addr, <span class="keyword">sizeof</span>(server_addr));</span><br><span class="line">    listen(listenfd, <span class="number">128</span>);</span><br><span class="line">    <span class="type">int</span> fd = accept(listenfd, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line">    handle_client(fd);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>Client</strong></p>
+<p>使用nc作为client连接Server，然后终止，</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">(base)  gcc -o server server.c</span><br><span class="line">(base)  ./server</span><br><span class="line">[1] 20340</span><br><span class="line">(base)  nc localhost 8888</span><br><span class="line">^C</span><br><span class="line">(base)  write 13 bytes</span><br><span class="line">[1]  + 20340 broken pipe  ./server</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>client 连接到 server，client中止，发送一个 <code>FIN</code> 给 server</li>
+<li>server 发送第一条消息给 client。但 client 已经退出了，所以 client 的 TCP 协议栈会发送一个 <code>RST</code> 给 server</li>
+<li>server 在接收到 <code>RST</code> 之后，继续写入第二条消息。往一个已经收到 <code>RST</code> 的 socket 继续写入数据，将导致<code>SIGPIPE</code>信号，从而终止 server进程</li>
+</ol>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags icon"></i>
 		<ul class="article-tag-list">
@@ -173,133 +196,106 @@
 		</ul>
 	</div>
 
-          
+      
 
+      
+
+      
+        
+<div class="share-btn share-icons tooltip-left">
+  <div class="tooltip tooltip-east">
+    <span class="tooltip-item">
+      <a href="javascript:;" class="share-sns share-outer">
+        <i class="icon icon-share"></i>
+      </a>
+    </span>
+    <span class="tooltip-content">
+      <div class="share-wrap">
+        <div class="share-icons">
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="icon icon-weibo"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="icon icon-weixin"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="icon icon-qq"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="icon icon-douban"></i>
+          </a>
+          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a>
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="icon icon-facebook"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="icon icon-twitter"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="icon icon-google"></i>
+          </a>
         </div>
-        <div class="clearfix"></div>
-    </header>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="page-modal wx-share js-wx-box">
+    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//pan.baidu.com/share/qrcode?url=http://example.com/2023/11/04/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8BSIGPIPE%E4%BF%A1%E5%8F%B7/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div class="mask js-mask"></div>
+      
+      <div class="clearfix"></div>
+    </div>
   </div>
 </article>
+
   
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2023/10/08/%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/" class="archive-article-date">
-  	<time datetime="2023-10-08T14:26:44.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2023-10-08</time>
-</a>
+<nav id="article-nav">
+  
+  
+    <a href="/2023/10/08/%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">内存对齐</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
         </div>
-    	 
+        
+        
+    </div>
+</aside>
+
+
+
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2023/10/08/%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/">内存对齐</a>
-    </h1>
+  
   
 
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">转载 C++</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2023/09/23/Muduo%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B9%8BPoller/" class="archive-article-date">
-  	<time datetime="2023-09-23T12:32:56.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2023-09-23</time>
-</a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2023/09/23/Muduo%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B9%8BPoller/">Muduo学习笔记之Poller</a>
-    </h1>
   
 
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">C++ 网络编程 Muduo</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2023/09/15/Muduo%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B9%8BChannel/" class="archive-article-date">
-  	<time datetime="2023-09-15T13:12:47.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2023-09-15</time>
-</a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2023/09/15/Muduo%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B9%8BChannel/">Muduo学习笔记之Channel</a>
-    </h1>
   
 
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">C++ 网络编程 Muduo</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
   
-  
-    </div></section>
-  
-
-    
 
 
           </div>
@@ -322,8 +318,8 @@
 	var yiliaConfig = {
 		mathjax: true,
 		isHome: false,
-		isPost: false,
-		isArchive: true,
+		isPost: true,
+		isArchive: false,
 		isTag: false,
 		isCategory: false,
 		open_in_new: false,
