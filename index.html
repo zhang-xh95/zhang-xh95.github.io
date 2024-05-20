@@ -154,10 +154,10 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h1 id="FASTAPI手册01"><a href="#FASTAPI手册01" class="headerlink" title="FASTAPI手册01"></a>FASTAPI手册01</h1><blockquote>
+        <blockquote>
 <p>FASTAPI是Python中最常用的WEB框架，工作中也常用该框架去做服务端，这篇博客记录<a target="_blank" rel="noopener" href="https://fastapi.tiangolo.com/zh/tutorial">FastAPI手册</a>中比较有意思的一些点</p>
 </blockquote>
-<h3 id="路径参数"><a href="#路径参数" class="headerlink" title="路径参数"></a>路径参数</h3><p><a target="_blank" rel="noopener" href="https://fastapi.tiangolo.com/zh/tutorial/path-params/">路径参数手册</a>中比较有意思的下面几点：</p>
+<h3 id="路径参数"><a href="#路径参数" class="headerlink" title="路径参数"></a>路径参数</h3><p><a target="_blank" rel="noopener" href="https://fastapi.tiangolo.com/zh/tutorial/path-params/">路径参数手册</a>中下面几点比较有意思：</p>
 <p><strong>使用Python字符串格式化声明<em>路径参数</em>，然后使用Python标准类型注解，对路径参数类型自动进行格式检查</strong></p>
 <p>示例：</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> fastapi <span class="keyword">import</span> FastAPI</span><br><span class="line"></span><br><span class="line">app = FastAPI()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.get(<span class="params"><span class="string">&quot;/items/&#123;item_id&#125;&quot;</span></span>)</span></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">read_item</span>(<span class="params">item_id: <span class="built_in">int</span></span>):</span><br><span class="line">    <span class="keyword">return</span> &#123;<span class="string">&quot;item_id&quot;</span>: item_id&#125;</span><br></pre></td></tr></table></figure>
